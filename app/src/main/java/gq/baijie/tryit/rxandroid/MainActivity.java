@@ -1,107 +1,99 @@
 package gq.baijie.tryit.rxandroid;
 
+import android.app.Activity;
+import android.content.Context;
+import android.content.Intent;
 import android.os.Bundle;
-import android.support.design.widget.FloatingActionButton;
-import android.support.design.widget.Snackbar;
+import android.support.annotation.Nullable;
 import android.support.v7.app.AppCompatActivity;
-import android.support.v7.widget.Toolbar;
-import android.view.Menu;
-import android.view.MenuItem;
+import android.support.v7.widget.CardView;
+import android.support.v7.widget.LinearLayoutManager;
+import android.support.v7.widget.RecyclerView;
+import android.view.LayoutInflater;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.TextView;
 
-import com.jakewharton.rxbinding.view.RxView;
-
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 
-import rx.Observable;
-import rx.Observer;
-import rx.Subscription;
-import rx.android.schedulers.AndroidSchedulers;
-import rx.exceptions.OnErrorThrowable;
-import rx.functions.Func1;
-import rx.schedulers.Schedulers;
+import butterknife.Bind;
+import butterknife.ButterKnife;
 
-public class MainActivity extends AppCompatActivity implements Observer<String> {
+public class MainActivity extends AppCompatActivity {
 
-    private Subscription subscription;
-    private TextView mMainTextView;
+    private static final List<Class<? extends Activity>> ACTIVITY_LIST;
+
+    static {
+        List<? extends Class<? extends Activity>> list = Arrays.asList(SimpleActivity.class);
+        ACTIVITY_LIST = Collections.unmodifiableList(list);
+    }
+
+    @Bind(R.id.main_recycler_view)
+    RecyclerView mainRecyclerView;
+
+    final ActivityListAdapter adapter = new ActivityListAdapter();
+    {
+        adapter.bindActivityList(ACTIVITY_LIST);
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        mMainTextView = (TextView) findViewById(R.id.main_text);
-        Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
-        setSupportActionBar(toolbar);
-
-        FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
-        fab.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-                        .setAction("Action", null).show();
-            }
-        });
-
-        subscription = RxView.clicks(findViewById(R.id.main_button))
-                .observeOn(Schedulers.newThread())
-                .startWith((Void) null)
-                .flatMap(new Func1<Void, Observable<String>>() {
-                    @Override
-                    public Observable<String> call(Void aVoid) {
-                        try {
-                            Thread.sleep(5000);
-                        } catch (InterruptedException e) {
-                            throw OnErrorThrowable.from(e);
-                        }
-                        return Observable.just("one", "two", "three", "four", "five");
-                    }
-                })
-                .observeOn(AndroidSchedulers.mainThread())
-                .subscribe(this);
+        ButterKnife.bind(this);
+        mainRecyclerView.setLayoutManager(new LinearLayoutManager(this));//这里用线性显示 类似于listview
+//        mainRecyclerView.setLayoutManager(new GridLayoutManager(this, 2));//这里用线性宫格显示 类似于grid view
+//        mainRecyclerView.setLayoutManager(new StaggeredGridLayoutManager(2, OrientationHelper.VERTICAL));//这里用线性宫格显示 类似于瀑布流
+        mainRecyclerView.setAdapter(adapter);
     }
 
-    @Override
-    protected void onDestroy() {
-        subscription.unsubscribe();
-        super.onDestroy();
-    }
+    private static class ActivityListAdapter extends RecyclerView.Adapter<ActivityCardViewHolder> {
 
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        // Inflate the menu; this adds items to the action bar if it is present.
-        getMenuInflater().inflate(R.menu.menu_main, menu);
-        return true;
-    }
+        @Nullable
+        private List<Class<? extends Activity>> activityList;
 
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
-        int id = item.getItemId();
-
-        //noinspection SimplifiableIfStatement
-        if (id == R.id.action_settings) {
-            return true;
+        public void bindActivityList(@Nullable List<Class<? extends Activity>> activityList) {
+            this.activityList = activityList;
         }
 
-        return super.onOptionsItemSelected(item);
+        @Override
+        public ActivityCardViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
+            return new ActivityCardViewHolder(
+                    LayoutInflater.from(parent.getContext())
+                            .inflate(R.layout.item_view_activity_card, parent, false));
+        }
+
+        @Override
+        public void onBindViewHolder(ActivityCardViewHolder holder, int position) {
+            assert activityList != null;
+            final Class<? extends Activity> clazz = activityList.get(position);
+            holder.activityNameView.setText(clazz.getSimpleName());
+            holder.activityCardView.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    Context context = v.getContext();
+                    context.startActivity(new Intent(context, clazz));
+                }
+            });
+        }
+
+        @Override
+        public int getItemCount() {
+            return activityList != null ? activityList.size() : 0;
+        }
     }
 
-    @Override
-    public void onCompleted() {
-        mMainTextView.append("\nonCompleted");
-    }
+    static class ActivityCardViewHolder extends RecyclerView.ViewHolder {
+        @Bind(R.id.activity_card_view)
+        CardView activityCardView;
+        @Bind(R.id.activity_name_view)
+        TextView activityNameView;
 
-    @Override
-    public void onError(Throwable e) {
-        mMainTextView.append("\nonError:\n" + Arrays.toString(e.getStackTrace()));
-    }
-
-    @Override
-    public void onNext(String s) {
-        mMainTextView.append("\n" + s);
+        public ActivityCardViewHolder(View itemView) {
+            super(itemView);
+            ButterKnife.bind(this, itemView);
+        }
     }
 }
