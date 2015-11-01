@@ -45,8 +45,8 @@ public class SimpleActivity extends AppCompatActivity implements Observer<String
         });
 
         subscription = RxView.clicks(findViewById(R.id.main_button))
-                .observeOn(Schedulers.newThread())
                 .startWith((Void) null)
+                .observeOn(Schedulers.newThread())
                 .flatMap(new Func1<Void, Observable<String>>() {
                     @Override
                     public Observable<String> call(Void aVoid) {
