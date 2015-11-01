@@ -10,12 +10,16 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.TextView;
 
+import com.jakewharton.rxbinding.view.RxView;
+
 import java.util.Arrays;
 
 import rx.Observable;
 import rx.Observer;
 import rx.Subscription;
 import rx.android.schedulers.AndroidSchedulers;
+import rx.exceptions.OnErrorThrowable;
+import rx.functions.Func1;
 import rx.schedulers.Schedulers;
 
 public class MainActivity extends AppCompatActivity implements Observer<String> {
@@ -40,8 +44,20 @@ public class MainActivity extends AppCompatActivity implements Observer<String> 
             }
         });
 
-        subscription = Observable.just("one", "two", "three", "four", "five")
-                .subscribeOn(Schedulers.newThread())
+        subscription = RxView.clicks(findViewById(R.id.main_button))
+                .observeOn(Schedulers.newThread())
+                .startWith((Void) null)
+                .flatMap(new Func1<Void, Observable<String>>() {
+                    @Override
+                    public Observable<String> call(Void aVoid) {
+                        try {
+                            Thread.sleep(5000);
+                        } catch (InterruptedException e) {
+                            throw OnErrorThrowable.from(e);
+                        }
+                        return Observable.just("one", "two", "three", "four", "five");
+                    }
+                })
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe(this);
     }
